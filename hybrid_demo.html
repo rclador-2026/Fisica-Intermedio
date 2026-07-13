@@ -79,7 +79,7 @@
 /* ---------- CONFIGURACIÓN DE ENVÍO DE RESULTADOS ---------- */
 // 1. Pegá acá la URL que te da Google Apps Script al desplegar como "Aplicación web" (paso a paso más abajo).
 // 2. Cambiá COHORTE si vas a usar el mismo formulario para más de un curso/comisión.
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz2JC0nz86xmGpdjaGI4uepnV0G7Lyf2kkWVC7MJITESBr6YHYhYcnhwctfuuA_JqlS/exec";
+const APPS_SCRIPT_URL = "PEGAR_AQUI_TU_URL_DE_APPS_SCRIPT";
 const COHORTE = "fisica-2026-adultos";
 
 /* ---------- CONTENIDO ---------- */
@@ -263,14 +263,23 @@ async function sendResults(){
     log: state.log,
   };
   try{
-    await fetch(APPS_SCRIPT_URL, {
+    const res = await fetch(APPS_SCRIPT_URL, {
       method: "POST",
       headers: {"Content-Type": "text/plain;charset=utf-8"}, // evita preflight CORS
       body: JSON.stringify(payload),
     });
-    state.sendStatus = "ok";
+    const text = await res.text();
+    let parsed = null;
+    try{ parsed = JSON.parse(text); } catch(_e){ /* no era JSON */ }
+    if(parsed && parsed.status === "ok"){
+      state.sendStatus = "ok";
+    } else {
+      state.sendStatus = "error";
+      state.sendErrorDetail = text.slice(0, 300);
+    }
   } catch(err){
     state.sendStatus = "error";
+    state.sendErrorDetail = String(err);
   }
   render();
 }
@@ -434,6 +443,7 @@ function render(){
           state.sendStatus==='error' ? '✗ No se pudo enviar — revisá tu conexión o la URL de Apps Script. ' : ''}
         ${state.sendStatus==='error' ? '<button class="restart" style="margin-left:8px;" onclick="sendResults()">Reintentar envío</button>' : ''}
       </p>
+      ${state.sendStatus==='error' && state.sendErrorDetail ? `<p class="send-status err" style="font-size:11px; word-break:break-all;">Detalle: ${state.sendErrorDetail.replace(/</g,'&lt;')}</p>` : ''}
       <button class="restart" onclick="restart()">Reiniciar sesión</button>
     </div>`;
   explainer.innerHTML = `
