@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Motor Híbrido IRT + BKT — Física/Matemática</title>
+<style>
+  :root{
+    --bg:#1B2420; --bg-panel:#212C27; --ink:#EDE8DD; --ink-dim:#A7AE9D;
+    --rule:#37453D; --accent:#D8A93E; --wrong:#C1666B; --trace:#5B8C85; --lock:#6B6558;
+    --font-display: Georgia, 'Times New Roman', serif;
+    --font-mono:'Courier New', Courier, monospace;
+    --font-body:-apple-system, Segoe UI, Roboto, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--font-body); padding:32px 24px 60px;}
+  .wrap{max-width:1040px; margin:0 auto;}
+  header{border-bottom:1px solid var(--rule); padding-bottom:18px; margin-bottom:28px;}
+  .eyebrow{font-family:var(--font-mono); font-size:12px; letter-spacing:.12em; color:var(--accent); text-transform:uppercase; margin:0 0 8px;}
+  h1{font-family:var(--font-display); font-weight:400; font-size:30px; margin:0 0 6px;}
+  .sub{color:var(--ink-dim); font-size:14px; max-width:680px; line-height:1.5;}
+  .phase-badge{font-family:var(--font-mono); font-size:11px; color:var(--bg); background:var(--accent); padding:3px 10px; border-radius:12px; display:inline-block; margin-bottom:14px;}
+
+  .grid{display:grid; grid-template-columns:1.3fr 1fr; gap:24px;}
+  @media (max-width:760px){ .grid{grid-template-columns:1fr;} }
+  .card{background:var(--bg-panel); border:1px solid var(--rule); border-radius:4px; padding:24px;}
+
+  .topic-tag{font-family:var(--font-mono); font-size:11px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:.08em;}
+  .qtext{font-family:var(--font-display); font-size:19px; line-height:1.4; margin:14px 0 20px;}
+  .options{display:flex; flex-direction:column; gap:10px;}
+  .opt{text-align:left; background:transparent; color:var(--ink); border:1px solid var(--rule); border-radius:3px; padding:12px 14px; font-size:14px; cursor:pointer; font-family:var(--font-body);}
+  .opt:hover{border-color:var(--accent);}
+  .opt.correct{border-color:var(--trace); background:rgba(91,140,133,.15);}
+  .opt.incorrect{border-color:var(--wrong); background:rgba(193,102,107,.15);}
+  .opt:disabled{cursor:default;}
+
+  .stat-row{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px;}
+  .stat-label{font-family:var(--font-mono); font-size:11px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:.08em;}
+  .stat-value{font-family:var(--font-mono); font-size:20px; color:var(--accent);}
+  .divider{border:none; border-top:1px solid var(--rule); margin:16px 0;}
+
+  .skill-row{margin-bottom:14px;}
+  .skill-head{display:flex; justify-content:space-between; font-size:12.5px; margin-bottom:5px;}
+  .skill-name{color:var(--ink);}
+  .skill-name.locked{color:var(--lock);}
+  .skill-pct{font-family:var(--font-mono); color:var(--ink-dim);}
+  .bar-bg{background:var(--rule); height:7px; border-radius:3px; overflow:hidden;}
+  .bar-fill{background:var(--trace); height:100%; transition:width .4s;}
+  .bar-fill.mastered{background:var(--accent);}
+  .lock-icon{font-family:var(--font-mono); font-size:10px; color:var(--lock);}
+
+  .explainer{margin-top:28px; font-size:13px; color:var(--ink-dim); line-height:1.6; border-top:1px solid var(--rule); padding-top:18px;}
+  .explainer strong{color:var(--ink);}
+  .summary h2{font-family:var(--font-display); font-weight:400; font-size:24px; margin-top:0;}
+  .restart{margin-top:18px; font-family:var(--font-mono); font-size:12px; background:transparent; color:var(--accent); border:1px solid var(--accent); padding:8px 14px; border-radius:3px; cursor:pointer;}
+  .restart:hover{background:rgba(216,169,62,.12);}
+  .progress-mini{font-family:var(--font-mono); font-size:11px; color:var(--ink-dim); margin-bottom:10px;}
+
+  .id-field{width:100%; background:var(--bg); border:1px solid var(--rule); color:var(--ink); border-radius:3px; padding:11px 12px; font-size:14px; font-family:var(--font-body); margin-bottom:14px;}
+  .id-field:focus{outline:none; border-color:var(--accent);}
+  .primary-btn{font-family:var(--font-mono); font-size:12px; background:var(--accent); color:var(--bg); border:none; padding:10px 18px; border-radius:3px; cursor:pointer;}
+  .primary-btn:disabled{opacity:.4; cursor:default;}
+  .send-status{font-family:var(--font-mono); font-size:12px; margin-top:14px; color:var(--ink-dim);}
+  .send-status.ok{color:var(--trace);}
+  .send-status.err{color:var(--wrong);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Motor híbrido de evaluación adaptativa · IRT + BKT</p>
+    <h1>Física / Matemática básica — nivelación adulta</h1>
+    <p class="sub">Fase 1 (IRT 2PL): diagnóstico rápido de preparación general. Fase 2 (BKT individualizado): refuerzo por sub-habilidad con parámetros ajustados a estudiantes que retoman el estudio (mayor slip por desuso), respetando prerrequisitos entre temas.</p>
+  </header>
+  <div id="app"></div>
+  <div class="explainer" id="explainer"></div>
+</div>
+
+<script>
+/* ---------- CONFIGURACIÓN DE ENVÍO DE RESULTADOS ---------- */
+// 1. Pegá acá la URL que te da Google Apps Script al desplegar como "Aplicación web" (paso a paso más abajo).
+// 2. Cambiá COHORTE si vas a usar el mismo formulario para más de un curso/comisión.
+const APPS_SCRIPT_URL = "PEGAR_AQUI_TU_URL_DE_APPS_SCRIPT";
+const COHORTE = "fisica-2026-adultos";
+
+/* ---------- CONTENIDO ---------- */
+const SKILLS = {
+  eq1:  {name:"Ecuaciones 1er grado", prereq:[], offset:-1.0},
+  eq2:  {name:"Ecuaciones 2do grado", prereq:["eq1"], offset:0.7},
+  triangulo: {name:"Partes del triángulo", prereq:[], offset:-1.0},
+  trig: {name:"Seno, coseno, tangente", prereq:["triangulo"], offset:0.0},
+  vectores: {name:"Vectores", prereq:[], offset:-0.3},
+};
+const SKILL_ORDER = ["eq1","eq2","triangulo","trig","vectores"];
+
+// Fase 1: banco diagnóstico (IRT 2PL) — 2 items por habilidad, a=discriminación, b=dificultad
+const DIAGNOSTIC = [
+  {skill:"eq1", a:1.0, b:-1.5, q:"Resolvé: x + 4 = 9", opts:["3","4","5","9"], correct:2},
+  {skill:"eq1", a:1.3, b:0.0,  q:"Resolvé: 2x − 6 = 10", opts:["6","7","8","16"], correct:2},
+  {skill:"eq2", a:1.2, b:0.5,  q:"Resolvé: x² = 49 (raíz positiva)", opts:["6","7","8","49"], correct:1},
+  {skill:"eq2", a:1.6, b:1.5,  q:"Resolvé: x² − 7x + 10 = 0", opts:["2 y 5","1 y 10","−2 y −5","2 y 10"], correct:0},
+  {skill:"triangulo", a:1.0, b:-1.2, q:"¿Cómo se llama el lado opuesto al ángulo recto?", opts:["Hipotenusa","Cateto","Base","Altura"], correct:0},
+  {skill:"triangulo", a:1.1, b:-0.5, q:"¿Cómo se llaman los lados que forman el ángulo recto?", opts:["Catetos","Hipotenusas","Vértices","Bisectrices"], correct:0},
+  {skill:"trig", a:1.1, b:-1.0, q:"En un triángulo rectángulo, sen(θ) = ?", opts:["opuesto/hipotenusa","adyacente/hipotenusa","opuesto/adyacente","hipotenusa/opuesto"], correct:0},
+  {skill:"trig", a:1.4, b:1.0,  q:"cos(45°) ≈ ?", opts:["0","0.5","0.71","1"], correct:2},
+  {skill:"vectores", a:1.0, b:-1.0, q:"¿Cómo se llama la longitud de un vector?", opts:["Módulo","Dirección","Sentido","Origen"], correct:0},
+  {skill:"vectores", a:1.2, b:0.0,  q:"Dos vectores son iguales si tienen igual...", opts:["módulo, dirección y sentido","solo módulo","solo dirección","solo origen"], correct:0},
+];
+
+// Fase 2: banco de práctica por habilidad (BKT)
+const PRACTICE = {
+  eq1: [
+    {q:"Resolvé: x + 7 = 15", opts:["6","8","9","22"], correct:1},
+    {q:"Resolvé: 3x = 21", opts:["3","7","18","24"], correct:1},
+    {q:"Resolvé: 2x + 4 = 14", opts:["3","5","7","10"], correct:1},
+    {q:"Resolvé: 5x − 3 = 2x + 9", opts:["3","4","6","12"], correct:1},
+    {q:"Resolvé: (x/2) + 3 = 7", opts:["2","4","8","14"], correct:2},
+  ],
+  eq2: [
+    {q:"Resolvé: x² = 25 (raíz positiva)", opts:["4","5","6","25"], correct:1},
+    {q:"Resolvé: x² − 9 = 0", opts:["3 y −3","9 y −9","solo 3","no tiene solución"], correct:0},
+    {q:"Resolvé: x² − 5x + 6 = 0", opts:["2 y 3","1 y 6","−2 y −3","5 y 6"], correct:0},
+    {q:"Resolvé: x² + 2x − 8 = 0", opts:["2 y −4","4 y −2","2 y 4","−2 y −8"], correct:0},
+    {q:"Discriminante de x² − 4x + 4 = 0", opts:["0","4","16","−16"], correct:0},
+  ],
+  triangulo: [
+    {q:"¿Lado opuesto al ángulo recto?", opts:["Hipotenusa","Cateto","Base","Altura"], correct:0},
+    {q:"¿Lados que forman el ángulo recto?", opts:["Catetos","Hipotenusas","Vértices","Bisectrices"], correct:0},
+    {q:"¿Cuánto suman los ángulos internos de un triángulo?", opts:["90°","180°","270°","360°"], correct:1},
+    {q:"En un triángulo equilátero, ¿cuánto mide cada ángulo?", opts:["45°","60°","90°","120°"], correct:1},
+    {q:"¿Cómo se llama el punto donde se cruzan las tres alturas?", opts:["Ortocentro","Baricentro","Incentro","Circuncentro"], correct:0},
+  ],
+  trig: [
+    {q:"sen(θ) = ?", opts:["opuesto/hipotenusa","adyacente/hipotenusa","opuesto/adyacente","hipotenusa/opuesto"], correct:0},
+    {q:"cos(θ) = ?", opts:["opuesto/hipotenusa","adyacente/hipotenusa","opuesto/adyacente","hipotenusa/adyacente"], correct:1},
+    {q:"tan(θ) = ?", opts:["opuesto/hipotenusa","adyacente/hipotenusa","opuesto/adyacente","hipotenusa/opuesto"], correct:2},
+    {q:"Si sen(θ) = 0.5, ¿θ agudo es...?", opts:["15°","30°","45°","60°"], correct:1},
+    {q:"cos(60°) = ?", opts:["0","0.5","0.7","1"], correct:1},
+  ],
+  vectores: [
+    {q:"¿Qué característica indica hacia dónde apunta un vector?", opts:["Dirección/sentido","Módulo","Origen","Escalar"], correct:0},
+    {q:"¿Cómo se llama la longitud de un vector?", opts:["Módulo","Dirección","Sentido","Origen"], correct:0},
+    {q:"Dos vectores son iguales si tienen igual...", opts:["módulo, dirección y sentido","solo módulo","solo dirección","solo origen"], correct:0},
+    {q:"La suma gráfica de vectores usa la regla de...", opts:["el paralelogramo","los cosenos exclusivamente","Pitágoras exclusivamente","ninguna regla gráfica"], correct:0},
+    {q:"¿Qué distingue a un vector de un escalar?", opts:["tiene dirección y sentido","es siempre mayor","no hay diferencia","no tiene módulo"], correct:0},
+  ],
+};
+
+/* ---------- PARÁMETROS BKT (ajustados a adultos que retoman el estudio) ---------- */
+const BKT_PARAMS = { pT:0.25, pG:0.20, pS:0.15 }; // slip alto: oxidación/ansiedad, no falta de conocimiento
+const MASTERY_THRESHOLD = 0.90;
+const MAX_ATTEMPTS_PER_SKILL = 5;
+const PREREQ_GATE = 0.60;
+
+/* ---------- ESTADO ---------- */
+let state = null;
+
+function newState(){
+  return {
+    phase: "id", // id | diagnostic | bkt | done
+    studentId: "",
+    sendStatus: null, // null | "sending" | "ok" | "error"
+    diagIndex: 0,
+    diagResponses: [], // {a,b,correct}
+    theta: null,
+    skills: null, // {key: {pL, attempts, done}}
+    currentSkill: null,
+    currentItemIdx: null,
+    practiceUsed: {}, // track which practice indices already used per skill
+    log: [],
+  };
+}
+
+/* ---------- IRT 2PL: estimación de theta por Newton-Raphson ---------- */
+function estimateTheta(responses){
+  let theta = 0;
+  for(let iter=0; iter<8; iter++){
+    let num=0, den=0;
+    for(const r of responses){
+      const P = 1/(1+Math.exp(-r.a*(theta-r.b)));
+      num += r.a*((r.correct?1:0) - P);
+      den += r.a*r.a*P*(1-P);
+    }
+    if(den < 1e-6) break;
+    theta += num/den;
+    theta = Math.max(-3, Math.min(3, theta));
+  }
+  return theta;
+}
+
+function initSkillsFromTheta(theta){
+  const skills = {};
+  for(const key of SKILL_ORDER){
+    const pL0 = 1/(1+Math.exp(-(theta - SKILLS[key].offset)));
+    skills[key] = { pL: pL0, attempts:0, done:false };
+  }
+  return skills;
+}
+
+/* ---------- BKT update ---------- */
+function bktUpdate(pL, correct){
+  const {pT,pG,pS} = BKT_PARAMS;
+  let pLgivenObs;
+  if(correct){
+    pLgivenObs = (pL*(1-pS)) / (pL*(1-pS) + (1-pL)*pG);
+  } else {
+    pLgivenObs = (pL*pS) / (pL*pS + (1-pL)*(1-pG));
+  }
+  return pLgivenObs + (1-pLgivenObs)*pT;
+}
+
+/* ---------- selección de siguiente habilidad (BKT, con gating de prerrequisitos) ---------- */
+function skillAvailable(key){
+  const s = state.skills[key];
+  if(s.done) return false;
+  if(s.attempts >= MAX_ATTEMPTS_PER_SKILL) return false;
+  for(const p of SKILLS[key].prereq){
+    if(state.skills[p].pL < PREREQ_GATE) return false;
+  }
+  return true;
+}
+
+function pickNextSkill(){
+  let candidates = SKILL_ORDER.filter(skillAvailable);
+  if(candidates.length === 0) return null;
+  candidates.sort((a,b)=> state.skills[a].pL - state.skills[b].pL);
+  return candidates[0];
+}
+
+function pickPracticeItem(skillKey){
+  const used = state.practiceUsed[skillKey] || [];
+  const bank = PRACTICE[skillKey];
+  const available = bank.map((_,i)=>i).filter(i=>!used.includes(i));
+  const pool = available.length ? available : bank.map((_,i)=>i);
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+
+/* ---------- lógica de fases ---------- */
+function startSession(){
+  const input = document.getElementById('studentIdInput');
+  const val = input.value.trim();
+  if(!val){ input.focus(); return; }
+  state.studentId = val;
+  state.phase = "diagnostic";
+  render();
+}
+
+async function sendResults(){
+  state.sendStatus = "sending";
+  render();
+  const payload = {
+    cohorte: COHORTE,
+    studentId: state.studentId,
+    timestamp: new Date().toISOString(),
+    theta: Number(state.theta.toFixed(3)),
+    skills: SKILL_ORDER.map(key => ({
+      key,
+      name: SKILLS[key].name,
+      pL: Number(state.skills[key].pL.toFixed(3)),
+      attempts: state.skills[key].attempts,
+      mastered: state.skills[key].done,
+    })),
+    totalPracticeQuestions: state.log.length,
+    log: state.log,
+  };
+  try{
+    await fetch(APPS_SCRIPT_URL, {
+      method: "POST",
+      headers: {"Content-Type": "text/plain;charset=utf-8"}, // evita preflight CORS
+      body: JSON.stringify(payload),
+    });
+    state.sendStatus = "ok";
+  } catch(err){
+    state.sendStatus = "error";
+  }
+  render();
+}
+
+function answerDiagnostic(optIdx){
+  const item = DIAGNOSTIC[state.diagIndex];
+  const correct = optIdx === item.correct;
+  state.diagResponses.push({a:item.a, b:item.b, correct});
+  disableOptions(optIdx, item.correct);
+  setTimeout(()=>{
+    state.diagIndex++;
+    if(state.diagIndex >= DIAGNOSTIC.length){
+      state.theta = estimateTheta(state.diagResponses);
+      state.skills = initSkillsFromTheta(state.theta);
+      state.phase = "bkt";
+      state.currentSkill = pickNextSkill();
+      state.currentItemIdx = pickPracticeItem(state.currentSkill);
+    }
+    render();
+  }, 600);
+}
+
+function answerPractice(optIdx){
+  const skillKey = state.currentSkill;
+  const item = PRACTICE[skillKey][state.currentItemIdx];
+  const correct = optIdx === item.correct;
+  const s = state.skills[skillKey];
+  s.pL = bktUpdate(s.pL, correct);
+  s.attempts++;
+  if(s.pL >= MASTERY_THRESHOLD) s.done = true;
+  state.practiceUsed[skillKey] = state.practiceUsed[skillKey] || [];
+  state.practiceUsed[skillKey].push(state.currentItemIdx);
+  state.log.push({skill:skillKey, correct});
+
+  disableOptions(optIdx, item.correct);
+  setTimeout(()=>{
+    const next = pickNextSkill();
+    if(next === null){
+      state.phase = "done";
+      render();
+      sendResults();
+      return;
+    } else {
+      state.currentSkill = next;
+      state.currentItemIdx = pickPracticeItem(next);
+    }
+    render();
+  }, 600);
+}
+
+function disableOptions(chosen, correctIdx){
+  document.querySelectorAll('.opt').forEach((btn,i)=>{
+    btn.disabled = true;
+    if(i===correctIdx) btn.classList.add('correct');
+    if(i===chosen && chosen!==correctIdx) btn.classList.add('incorrect');
+  });
+}
+
+function restart(){ state = newState(); render(); }
+
+/* ---------- RENDER ---------- */
+function skillBars(){
+  return SKILL_ORDER.map(key=>{
+    const s = state.skills[key];
+    const locked = !s.done && !skillAvailable(key) && SKILLS[key].prereq.length>0 && state.skills[SKILLS[key].prereq[0]].pL < PREREQ_GATE;
+    const pct = Math.round(s.pL*100);
+    return `<div class="skill-row">
+      <div class="skill-head">
+        <span class="skill-name ${locked?'locked':''}">${SKILLS[key].name} ${locked?'<span class=\"lock-icon\">🔒 requiere prerrequisito</span>':''}</span>
+        <span class="skill-pct">${pct}%${s.done?' ✓':''}</span>
+      </div>
+      <div class="bar-bg"><div class="bar-fill ${s.done?'mastered':''}" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+}
+
+function render(){
+  const app = document.getElementById('app');
+  const explainer = document.getElementById('explainer');
+
+  if(state.phase === "id"){
+    app.innerHTML = `
+      <div class="card" style="max-width:480px;">
+        <p class="topic-tag">Antes de empezar</p>
+        <p class="qtext" style="font-size:17px;">Ingresá tu nombre o legajo para identificar tu resultado</p>
+        <input class="id-field" id="studentIdInput" type="text" placeholder="Ej: Juan Pérez o legajo 4521" autofocus>
+        <button class="primary-btn" onclick="startSession()">Comenzar evaluación</button>
+      </div>`;
+    explainer.innerHTML = `
+      <strong>Nota de privacidad:</strong> este identificador y tus resultados se guardan en una planilla
+      gestionada por tu docente/institución, únicamente para seguimiento pedagógico e investigación del curso.
+    `;
+    document.getElementById('studentIdInput').addEventListener('keydown', e=>{
+      if(e.key === 'Enter') startSession();
+    });
+    return;
+  }
+
+  if(state.phase === "diagnostic"){
+    const item = DIAGNOSTIC[state.diagIndex];
+    const optsHtml = item.opts.map((o,i)=>`<button class="opt" onclick="answerDiagnostic(${i})">${o}</button>`).join('');
+    app.innerHTML = `
+      <span class="phase-badge">Fase 1 · Diagnóstico IRT</span>
+      <div class="grid">
+        <div class="card">
+          <p class="progress-mini">Pregunta ${state.diagIndex+1} de ${DIAGNOSTIC.length}</p>
+          <p class="topic-tag">${SKILLS[item.skill].name}</p>
+          <p class="qtext">${item.q}</p>
+          <div class="options">${optsHtml}</div>
+        </div>
+        <div class="card">
+          <p class="stat-label">Qué está pasando</p>
+          <p style="font-size:13px; color:var(--ink-dim); line-height:1.6;">
+            Cada ítem tiene parámetros de dificultad (b) y discriminación (a) predefinidos.
+            Al terminar las ${DIAGNOSTIC.length} preguntas se estima θ (habilidad general)
+            por máxima verosimilitud (Newton-Raphson), y ese θ se usa como punto de partida
+            para la probabilidad inicial de dominio p(L₀) de cada sub-habilidad en la Fase 2.
+          </p>
+        </div>
+      </div>`;
+    explainer.innerHTML = "";
+    return;
+  }
+
+  if(state.phase === "bkt"){
+    const skillKey = state.currentSkill;
+    const item = PRACTICE[skillKey][state.currentItemIdx];
+    const optsHtml = item.opts.map((o,i)=>`<button class="opt" onclick="answerPractice(${i})">${o}</button>`).join('');
+    app.innerHTML = `
+      <span class="phase-badge">Fase 2 · Tutoría adaptativa (BKT)</span>
+      <div class="grid">
+        <div class="card">
+          <p class="topic-tag">${SKILLS[skillKey].name}</p>
+          <p class="qtext">${item.q}</p>
+          <div class="options">${optsHtml}</div>
+        </div>
+        <div class="card">
+          <div class="stat-row"><span class="stat-label">θ diagnóstico inicial</span><span class="stat-value">${state.theta.toFixed(2)}</span></div>
+          <hr class="divider">
+          <p class="stat-label" style="margin-bottom:10px;">Dominio por habilidad p(L)</p>
+          ${skillBars()}
+        </div>
+      </div>`;
+    explainer.innerHTML = "";
+    return;
+  }
+
+  // done
+  const rows = skillBars();
+  app.innerHTML = `
+    <span class="phase-badge">Sesión completa</span>
+    <div class="card summary">
+      <h2>Reporte de nivelación</h2>
+      <div class="stat-row"><span class="stat-label">θ diagnóstico</span><span class="stat-value">${state.theta.toFixed(2)}</span></div>
+      <div class="stat-row"><span class="stat-label">Preguntas de práctica respondidas</span><span class="stat-value">${state.log.length}</span></div>
+      <hr class="divider">
+      ${rows}
+      <p class="send-status ${state.sendStatus==='ok'?'ok':state.sendStatus==='error'?'err':''}">
+        ${state.sendStatus==='sending' ? 'Enviando resultados…' :
+          state.sendStatus==='ok' ? '✓ Resultados guardados' :
+          state.sendStatus==='error' ? '✗ No se pudo enviar — revisá tu conexión o la URL de Apps Script. ' : ''}
+        ${state.sendStatus==='error' ? '<button class="restart" style="margin-left:8px;" onclick="sendResults()">Reintentar envío</button>' : ''}
+      </p>
+      <button class="restart" onclick="restart()">Reiniciar sesión</button>
+    </div>`;
+  explainer.innerHTML = `
+    <strong>Lectura del reporte:</strong> las habilidades marcadas con ✓ superaron el umbral de dominio (p(L) ≥ ${MASTERY_THRESHOLD}).
+    Las que quedaron por debajo son candidatas a refuerzo docente presencial — con esta población (25–60 años)
+    conviene revisar si el punto de corte fue por falta real de dominio o por "slip" (oxidación/ansiedad),
+    ya que el parámetro p(S)=${BKT_PARAMS.pS} ya descuenta parte de ese efecto pero no lo elimina del todo.
+  `;
+}
+
+state = newState();
+render();
+</script>
+</body>
+</html>
