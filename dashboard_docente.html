@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Panel docente — Seguimiento de nivelación</title>
+<style>
+  :root{
+    --bg:#1B2420; --bg-panel:#212C27; --ink:#EDE8DD; --ink-dim:#A7AE9D;
+    --rule:#37453D; --accent:#D8A93E; --wrong:#C1666B; --trace:#5B8C85; --lock:#6B6558;
+    --font-display: Georgia, 'Times New Roman', serif;
+    --font-mono:'Courier New', Courier, monospace;
+    --font-body:-apple-system, Segoe UI, Roboto, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--font-body); padding:32px 24px 60px;}
+  .wrap{max-width:1140px; margin:0 auto;}
+  header{border-bottom:1px solid var(--rule); padding-bottom:18px; margin-bottom:28px; display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:12px;}
+  .eyebrow{font-family:var(--font-mono); font-size:12px; letter-spacing:.12em; color:var(--accent); text-transform:uppercase; margin:0 0 8px;}
+  h1{font-family:var(--font-display); font-weight:400; font-size:28px; margin:0 0 6px;}
+  .sub{color:var(--ink-dim); font-size:13px; max-width:600px; line-height:1.5;}
+  .refresh-btn{font-family:var(--font-mono); font-size:12px; background:transparent; color:var(--accent); border:1px solid var(--accent); padding:9px 16px; border-radius:3px; cursor:pointer; white-space:nowrap;}
+  .refresh-btn:hover{background:rgba(216,169,62,.12);}
+  .refresh-btn:disabled{opacity:.4; cursor:default;}
+
+  .overview{display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:28px;}
+  @media (max-width:800px){ .overview{grid-template-columns:repeat(2,1fr);} }
+  .stat-card{background:var(--bg-panel); border:1px solid var(--rule); border-radius:4px; padding:18px;}
+  .stat-label{font-family:var(--font-mono); font-size:10.5px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:.08em; margin-bottom:6px;}
+  .stat-value{font-family:var(--font-display); font-size:30px; color:var(--accent);}
+
+  .section-title{font-family:var(--font-display); font-size:20px; margin:32px 0 14px; color:var(--ink);}
+
+  .rec-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px;}
+  .rec-card{background:var(--bg-panel); border:1px solid var(--rule); border-radius:4px; padding:18px;}
+  .rec-card h3{font-family:var(--font-display); font-weight:400; font-size:16px; margin:0 0 4px; color:var(--ink);}
+  .rec-count{font-family:var(--font-mono); font-size:11px; color:var(--ink-dim); margin-bottom:12px;}
+  .rec-list{list-style:none; margin:0; padding:0; font-size:13px;}
+  .rec-list li{display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--rule);}
+  .rec-list li:last-child{border-bottom:none;}
+  .rec-pct{font-family:var(--font-mono); color:var(--wrong);}
+  .rec-empty{font-size:12.5px; color:var(--trace); font-family:var(--font-mono);}
+
+  table{width:100%; border-collapse:collapse; margin-top:10px; font-size:13px;}
+  th{font-family:var(--font-mono); font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-dim); text-align:left; padding:10px 8px; border-bottom:1px solid var(--rule); cursor:pointer; white-space:nowrap;}
+  th:hover{color:var(--accent);}
+  td{padding:9px 8px; border-bottom:1px solid var(--rule); white-space:nowrap;}
+  tr:hover td{background:rgba(255,255,255,.02);}
+  .cell-pct{font-family:var(--font-mono);}
+  .cell-pct.ok{color:var(--trace);}
+  .cell-pct.low{color:var(--wrong);}
+  .search-field{width:100%; max-width:320px; background:var(--bg-panel); border:1px solid var(--rule); color:var(--ink); border-radius:3px; padding:9px 12px; font-size:13px; margin-bottom:12px;}
+
+  .status-msg{font-family:var(--font-mono); font-size:13px; color:var(--ink-dim); padding:40px 0; text-align:center;}
+  .status-msg.err{color:var(--wrong);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <p class="eyebrow">Panel docente · motor híbrido IRT + BKT</p>
+      <h1>Seguimiento de nivelación</h1>
+      <p class="sub">Estado más reciente de cada alumno y recomendaciones de refuerzo agrupadas por sub-habilidad.</p>
+    </div>
+    <button class="refresh-btn" id="refreshBtn" onclick="loadData()">Actualizar datos</button>
+  </header>
+  <div id="content"><p class="status-msg">Cargando datos…</p></div>
+</div>
+
+<script>
+// Pegá la misma URL de Apps Script que usás en hybrid_demo.html (es el mismo endpoint).
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz2JC0nz86xmGpdjaGI4uepnV0G7Lyf2kkWVC7MJITESBr6YHYhYcnhwctfuuA_JqlS/exec";
+
+const SKILLS_DASH = [
+  {key:"ecuaciones_1er_grado", label:"Ecuaciones 1er grado"},
+  {key:"ecuaciones_2do_grado", label:"Ecuaciones 2do grado"},
+  {key:"partes_triangulo",     label:"Partes del triángulo"},
+  {key:"trigonometria",        label:"Seno, coseno, tangente"},
+  {key:"vectores",             label:"Vectores"},
+];
+const MASTERY_THRESHOLD = 0.90;
+
+let allRows = [];
+let latestByStudent = [];
+let sortKey = "alumno";
+let sortAsc = true;
+
+async function loadData(){
+  const btn = document.getElementById('refreshBtn');
+  const content = document.getElementById('content');
+  btn.disabled = true;
+  content.innerHTML = '<p class="status-msg">Cargando datos…</p>';
+  try{
+    const res = await fetch(APPS_SCRIPT_URL);
+    const rows = await res.json();
+    allRows = rows;
+    computeLatest();
+    render();
+  } catch(err){
+    content.innerHTML = `<p class="status-msg err">No se pudieron cargar los datos. Revisá que APPS_SCRIPT_URL esté bien pegada. Detalle: ${String(err)}</p>`;
+  }
+  btn.disabled = false;
+}
+
+function computeLatest(){
+  const byStudent = {};
+  allRows.forEach(row => {
+    const id = row.alumno;
+    if(!byStudent[id] || row.marca_temporal > byStudent[id].marca_temporal){
+      byStudent[id] = row;
+    }
+  });
+  latestByStudent = Object.values(byStudent);
+}
+
+function pct(v){ return Math.round(Number(v)*100); }
+
+function renderOverview(){
+  const total = latestByStudent.length;
+  const avgTheta = total ? (latestByStudent.reduce((s,r)=>s+Number(r.theta_diagnostico),0)/total) : 0;
+  const allMastered = latestByStudent.filter(r =>
+    SKILLS_DASH.every(sk => r[sk.key+"_lograda"] === "Sí")
+  ).length;
+  const totalAttempts = allRows.length;
+
+  return `
+    <div class="overview">
+      <div class="stat-card"><p class="stat-label">Alumnos evaluados</p><p class="stat-value">${total}</p></div>
+      <div class="stat-card"><p class="stat-label">θ promedio del curso</p><p class="stat-value">${avgTheta.toFixed(2)}</p></div>
+      <div class="stat-card"><p class="stat-label">Dominan las 5 habilidades</p><p class="stat-value">${total?Math.round(allMastered/total*100):0}%</p></div>
+      <div class="stat-card"><p class="stat-label">Sesiones totales registradas</p><p class="stat-value">${totalAttempts}</p></div>
+    </div>`;
+}
+
+function renderRecommendations(){
+  const cards = SKILLS_DASH.map(sk=>{
+    const domKey = sk.key+"_dominio", logKey = sk.key+"_lograda";
+    const needsWork = latestByStudent
+      .filter(r => r[logKey] !== "Sí")
+      .sort((a,b)=> Number(a[domKey]) - Number(b[domKey]));
+    const listHtml = needsWork.length
+      ? `<ul class="rec-list">${needsWork.map(r=>`<li><span>${r.alumno}</span><span class="rec-pct">${pct(r[domKey])}%</span></li>`).join('')}</ul>`
+      : `<p class="rec-empty">✓ Todo el curso domina este tema</p>`;
+    return `<div class="rec-card">
+      <h3>${sk.label}</h3>
+      <p class="rec-count">${needsWork.length} de ${latestByStudent.length} necesitan refuerzo</p>
+      ${listHtml}
+    </div>`;
+  }).join('');
+  return `<h2 class="section-title">Recomendaciones de refuerzo por habilidad</h2><div class="rec-grid">${cards}</div>`;
+}
+
+function sortRows(rows){
+  return [...rows].sort((a,b)=>{
+    let va = a[sortKey], vb = b[sortKey];
+    if(typeof va === "string" && !isNaN(Number(va))){ va = Number(va); vb = Number(vb); }
+    if(va < vb) return sortAsc ? -1 : 1;
+    if(va > vb) return sortAsc ? 1 : -1;
+    return 0;
+  });
+}
+
+function setSort(key){
+  if(sortKey === key) sortAsc = !sortAsc; else { sortKey = key; sortAsc = true; }
+  render();
+}
+
+function renderTable(){
+  const filterVal = (document.getElementById('searchInput')?.value || "").toLowerCase();
+  const rows = sortRows(latestByStudent).filter(r => r.alumno.toLowerCase().includes(filterVal));
+
+  const headerCells = [
+    {key:"alumno", label:"Alumno"},
+    {key:"theta_diagnostico", label:"θ diagnóstico"},
+    ...SKILLS_DASH.map(sk=>({key:sk.key+"_dominio", label:sk.label})),
+    {key:"marca_temporal", label:"Última sesión"},
+  ];
+
+  const thead = headerCells.map(h=>`<th onclick="setSort('${h.key}')">${h.label}${sortKey===h.key?(sortAsc?' ▲':' ▼'):''}</th>`).join('');
+
+  const tbody = rows.map(r=>{
+    const skillCells = SKILLS_DASH.map(sk=>{
+      const p = pct(r[sk.key+"_dominio"]);
+      const ok = r[sk.key+"_lograda"] === "Sí";
+      return `<td class="cell-pct ${ok?'ok':'low'}">${p}%${ok?' ✓':''}</td>`;
+    }).join('');
+    const fecha = new Date(r.marca_temporal).toLocaleString('es-AR', {day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'});
+    return `<tr>
+      <td>${r.alumno}</td>
+      <td class="cell-pct">${Number(r.theta_diagnostico).toFixed(2)}</td>
+      ${skillCells}
+      <td>${fecha}</td>
+    </tr>`;
+  }).join('');
+
+  return `
+    <h2 class="section-title">Listado completo</h2>
+    <input class="search-field" id="searchInput" type="text" placeholder="Buscar alumno…" oninput="render()" value="${filterVal}">
+    <table><thead><tr>${thead}</tr></thead><tbody>${tbody}</tbody></table>
+  `;
+}
+
+function render(){
+  const content = document.getElementById('content');
+  if(latestByStudent.length === 0){
+    content.innerHTML = '<p class="status-msg">Todavía no hay resultados registrados en la Sheet.</p>';
+    return;
+  }
+  content.innerHTML = renderOverview() + renderRecommendations() + renderTable();
+}
+
+loadData();
+</script>
+</body>
+</html>
