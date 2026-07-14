@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Motor Híbrido IRT + BKT — Física/Matemática</title>
+<title>Motor Híbrido IRT + BKT — Campo y Potencial Eléctrico</title>
 <style>
   :root{
     --bg:#1B2420; --bg-panel:#212C27; --ink:#EDE8DD; --ink-dim:#A7AE9D;
@@ -68,8 +68,8 @@
 <div class="wrap">
   <header>
     <p class="eyebrow">Motor híbrido de evaluación adaptativa · IRT + BKT</p>
-    <h1>Física / Matemática básica — nivelación adulta</h1>
-    <p class="sub">Fase 1 (IRT 2PL): diagnóstico rápido de preparación general. Fase 2 (BKT individualizado): refuerzo por sub-habilidad con parámetros ajustados a estudiantes que retoman el estudio (mayor slip por desuso), respetando prerrequisitos entre temas.</p>
+    <h1>Campo eléctrico y potencial eléctrico</h1>
+    <p class="sub">Fase 1 (IRT 2PL): diagnóstico rápido de preparación general en electrostática. Fase 2 (BKT individualizado): refuerzo por sub-tema con parámetros ajustados a estudiantes que retoman el estudio (mayor slip por desuso), respetando la progresión lógica carga → campo → potencial → energía.</p>
   </header>
   <div id="app"></div>
   <div class="explainer" id="explainer"></div>
@@ -79,76 +79,58 @@
 /* ---------- CONFIGURACIÓN DE ENVÍO DE RESULTADOS ---------- */
 // 1. Pegá acá la URL que te da Google Apps Script al desplegar como "Aplicación web" (paso a paso más abajo).
 // 2. Cambiá COHORTE si vas a usar el mismo formulario para más de un curso/comisión.
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbza7pdsliN4JKdDpm1XSjkE8UJYC1S9wOJ-jaxoRCIpjuHul2CqIafoFgCJzz9krLGd/exec";
-const COHORTE = "Ingenieria 2026";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby4g9xKxcXRRtdwfQem5l4U_RMrO1J0VrriU4qtxKEyaF26fcY05HmCpAnwIk8dFlWa/exec";
+const COHORTE = "campo-potencial-2026";
 
 /* ---------- CONTENIDO ---------- */
 const SKILLS = {
-  eq1:  {name:"Ecuaciones 1er grado", prereq:[], offset:-1.0},
-  eq2:  {name:"Ecuaciones 2do grado", prereq:["eq1"], offset:0.7},
-  triangulo: {name:"Partes del triángulo", prereq:[], offset:-1.0},
-  trig: {name:"Seno, coseno, tangente", prereq:["triangulo"], offset:0.0},
-  vectores: {name:"Vectores", prereq:[], offset:-0.3},
+  carga:    {name:"Carga eléctrica y Ley de Coulomb", prereq:[], offset:-1.0},
+  campo:    {name:"Campo eléctrico", prereq:["carga"], offset:0.0},
+  potencial:{name:"Potencial eléctrico", prereq:["campo"], offset:0.5},
+  energia:  {name:"Energía potencial y relación E–V", prereq:["potencial"], offset:0.8},
 };
-const SKILL_ORDER = ["eq1","eq2","triangulo","trig","vectores"];
+const SKILL_ORDER = ["carga","campo","potencial","energia"];
 
 // Fase 1: banco diagnóstico (IRT 2PL) — 2 items por habilidad, a=discriminación, b=dificultad
 const DIAGNOSTIC = [
-  {skill:"eq1", a:1.0, b:-1.5, q:"Resolvé: x + 4 = 9", opts:["3","4","5","9"], correct:2},
-  {skill:"eq1", a:1.3, b:0.0,  q:"Resolvé: 2x − 6 = 10", opts:["6","7","8","16"], correct:2},
-  {skill:"eq2", a:1.2, b:0.5,  q:"Resolvé: x² = 49 (raíz positiva)", opts:["6","7","8","49"], correct:1},
-  {skill:"eq2", a:1.6, b:1.5,  q:"Resolvé: x² − 7x + 10 = 0", opts:["2 y 5","1 y 10","−2 y −5","2 y 10"], correct:0},
-  {skill:"triangulo", a:1.0, b:-1.2, q:"¿Cómo se llama el lado opuesto al ángulo recto?", opts:["Hipotenusa","Cateto","Base","Altura"], correct:0},
-  {skill:"triangulo", a:1.1, b:-0.5, q:"¿Cómo se llaman los lados que forman el ángulo recto?", opts:["Catetos","Hipotenusas","Vértices","Bisectrices"], correct:0},
-  {skill:"trig", a:1.1, b:-1.0, q:"En un triángulo rectángulo, sen(θ) = ?", opts:["opuesto/hipotenusa","adyacente/hipotenusa","opuesto/adyacente","hipotenusa/opuesto"], correct:0},
-  {skill:"trig", a:1.4, b:1.0,  q:"cos(45°) ≈ ?", opts:["0","0.5","0.71","1"], correct:2},
-  {skill:"vectores", a:1.0, b:-1.0, q:"¿Cómo se llama la longitud de un vector?", opts:["Módulo","Dirección","Sentido","Origen"], correct:0},
-  {skill:"vectores", a:1.2, b:0.0,  q:"Dos vectores son iguales si tienen igual...", opts:["módulo, dirección y sentido","solo módulo","solo dirección","solo origen"], correct:0},
+  {skill:"carga", a:1.0, b:-1.5, q:"¿Cuál es la unidad de carga eléctrica en el SI?", opts:["Coulomb","Newton","Watt","Volt"], correct:0},
+  {skill:"carga", a:1.3, b:0.5,  q:"La fuerza eléctrica entre dos cargas puntuales es proporcional a...", opts:["el producto de las cargas e inversamente proporcional al cuadrado de la distancia","la suma de las cargas y la distancia","el cociente de las cargas","la distancia al cuadrado únicamente"], correct:0},
+  {skill:"campo", a:1.1, b:-1.0, q:"El campo eléctrico se define como la fuerza por unidad de...", opts:["carga","masa","distancia","tiempo"], correct:0},
+  {skill:"campo", a:1.4, b:1.0,  q:"Las líneas de campo eléctrico de una carga puntual positiva...", opts:["salen radialmente desde la carga","entran radialmente hacia la carga","son paralelas siempre","forman círculos concéntricos"], correct:0},
+  {skill:"potencial", a:1.1, b:-1.0, q:"El potencial eléctrico es una magnitud...", opts:["escalar","vectorial","tensorial","adimensional"], correct:0},
+  {skill:"potencial", a:1.5, b:1.2, q:"La unidad de potencial eléctrico es...", opts:["Volt","Newton","Joule","Coulomb"], correct:0},
+  {skill:"energia", a:1.2, b:-0.5, q:"La energía potencial eléctrica entre dos cargas depende de...", opts:["el producto de las cargas y la distancia entre ellas","solo la masa","solo el tiempo","solo el volumen"], correct:0},
+  {skill:"energia", a:1.6, b:1.5,  q:"La relación entre campo eléctrico y potencial es...", opts:["E es menos el gradiente del potencial","V es el gradiente de E","son magnitudes independientes","E es proporcional al cuadrado de V"], correct:0},
 ];
 
 // Fase 2: banco de práctica por habilidad (BKT)
 const PRACTICE = {
-  eq1: [
-    {q:"Resolvé: x + 7 = 15", opts:["6","8","9","22"], correct:1},
-    {q:"Resolvé: 3x = 21", opts:["3","7","18","24"], correct:1},
-    {q:"Resolvé: 2x + 4 = 14", opts:["3","5","7","10"], correct:1},
-    {q:"Resolvé: 5x − 3 = 2x + 9", opts:["3","4","6","12"], correct:1},
-    {q:"Resolvé: (x/2) + 3 = 7", opts:["2","4","8","14"], correct:2},
+  carga: [
+    {q:"Si se duplica la distancia entre dos cargas, la fuerza eléctrica se...", opts:["reduce a la cuarta parte","duplica","reduce a la mitad","no cambia"], correct:0},
+    {q:"Dos cargas de igual signo se...", opts:["atraen","repelen","no interactúan","se anulan"], correct:1},
+    {q:"La constante de Coulomb k tiene un valor aproximado de...", opts:["9×10⁹ N·m²/C²","6.67×10⁻¹¹ N·m²/kg²","1.6×10⁻¹⁹ C","3×10⁸ m/s"], correct:0},
   ],
-  eq2: [
-    {q:"Resolvé: x² = 25 (raíz positiva)", opts:["4","5","6","25"], correct:1},
-    {q:"Resolvé: x² − 9 = 0", opts:["3 y −3","9 y −9","solo 3","no tiene solución"], correct:0},
-    {q:"Resolvé: x² − 5x + 6 = 0", opts:["2 y 3","1 y 6","−2 y −3","5 y 6"], correct:0},
-    {q:"Resolvé: x² + 2x − 8 = 0", opts:["2 y −4","4 y −2","2 y 4","−2 y −8"], correct:0},
-    {q:"Discriminante de x² − 4x + 4 = 0", opts:["0","4","16","−16"], correct:0},
+  campo: [
+    {q:"La unidad del campo eléctrico en el SI es...", opts:["N/C","C/N","J/C","N·C"], correct:0},
+    {q:"El campo eléctrico dentro de un conductor en equilibrio electrostático es...", opts:["cero","máximo","igual al externo","infinito"], correct:0},
+    {q:"Si se duplica la carga que genera el campo, el campo eléctrico en un punto dado se...", opts:["duplica","reduce a la mitad","cuadruplica","no cambia"], correct:0},
   ],
-  triangulo: [
-    {q:"¿Lado opuesto al ángulo recto?", opts:["Hipotenusa","Cateto","Base","Altura"], correct:0},
-    {q:"¿Lados que forman el ángulo recto?", opts:["Catetos","Hipotenusas","Vértices","Bisectrices"], correct:0},
-    {q:"¿Cuánto suman los ángulos internos de un triángulo?", opts:["90°","180°","270°","360°"], correct:1},
-    {q:"En un triángulo equilátero, ¿cuánto mide cada ángulo?", opts:["45°","60°","90°","120°"], correct:1},
-    {q:"¿Cómo se llama el punto donde se cruzan las tres alturas?", opts:["Ortocentro","Baricentro","Incentro","Circuncentro"], correct:0},
+  potencial: [
+    {q:"El potencial eléctrico generado por una carga puntual positiva, a medida que aumenta la distancia r...", opts:["disminuye","aumenta","se mantiene igual","se vuelve negativo"], correct:0},
+    {q:"Dos puntos con el mismo potencial eléctrico forman parte de una...", opts:["superficie equipotencial","línea de campo","carga puntual","corriente eléctrica"], correct:0},
+    {q:"El trabajo para mover una carga entre dos puntos de igual potencial es...", opts:["cero","máximo","infinito","depende de la trayectoria"], correct:0},
   ],
-  trig: [
-    {q:"sen(θ) = ?", opts:["opuesto/hipotenusa","adyacente/hipotenusa","opuesto/adyacente","hipotenusa/opuesto"], correct:0},
-    {q:"cos(θ) = ?", opts:["opuesto/hipotenusa","adyacente/hipotenusa","opuesto/adyacente","hipotenusa/adyacente"], correct:1},
-    {q:"tan(θ) = ?", opts:["opuesto/hipotenusa","adyacente/hipotenusa","opuesto/adyacente","hipotenusa/opuesto"], correct:2},
-    {q:"Si sen(θ) = 0.5, ¿θ agudo es...?", opts:["15°","30°","45°","60°"], correct:1},
-    {q:"cos(60°) = ?", opts:["0","0.5","0.7","1"], correct:1},
-  ],
-  vectores: [
-    {q:"¿Qué característica indica hacia dónde apunta un vector?", opts:["Dirección/sentido","Módulo","Origen","Escalar"], correct:0},
-    {q:"¿Cómo se llama la longitud de un vector?", opts:["Módulo","Dirección","Sentido","Origen"], correct:0},
-    {q:"Dos vectores son iguales si tienen igual...", opts:["módulo, dirección y sentido","solo módulo","solo dirección","solo origen"], correct:0},
-    {q:"La suma gráfica de vectores usa la regla de...", opts:["el paralelogramo","los cosenos exclusivamente","Pitágoras exclusivamente","ninguna regla gráfica"], correct:0},
-    {q:"¿Qué distingue a un vector de un escalar?", opts:["tiene dirección y sentido","es siempre mayor","no hay diferencia","no tiene módulo"], correct:0},
+  energia: [
+    {q:"El trabajo realizado por el campo eléctrico al mover una carga q entre los puntos A y B es...", opts:["W = q(V_A − V_B)","W = qE","W = qV²","W = q/E"], correct:0},
+    {q:"En una región donde el potencial es constante, el campo eléctrico es...", opts:["cero","máximo","infinito","igual a la carga"], correct:0},
+    {q:"La energía potencial eléctrica se mide en...", opts:["Joules","Volts","Coulombs","Newtons"], correct:0},
   ],
 };
 
 /* ---------- PARÁMETROS BKT (ajustados a adultos que retoman el estudio) ---------- */
 const BKT_PARAMS = { pT:0.25, pG:0.20, pS:0.15 }; // slip alto: oxidación/ansiedad, no falta de conocimiento
 const MASTERY_THRESHOLD = 0.90;
-const MAX_ATTEMPTS_PER_SKILL = 5;
+const MAX_ATTEMPTS_PER_SKILL = 3;
 const PREREQ_GATE = 0.60;
 
 /* ---------- ESTADO ---------- */
@@ -265,9 +247,13 @@ async function sendResults(){
   try{
     await fetch(APPS_SCRIPT_URL, {
       method: "POST",
+      mode: "no-cors", // evita que el navegador bloquee la respuesta de Apps Script por CORS
       headers: {"Content-Type": "text/plain;charset=utf-8"}, // evita preflight CORS
       body: JSON.stringify(payload),
     });
+    // En modo no-cors no se puede leer el contenido de la respuesta (queda "opaca"),
+    // así que no podemos confirmar 100% que el servidor procesó todo sin error.
+    // Si el pedido no explotó a nivel red, asumimos que se envió correctamente.
     state.sendStatus = "ok";
   } catch(err){
     state.sendStatus = "error";
@@ -438,9 +424,10 @@ function render(){
     </div>`;
   explainer.innerHTML = `
     <strong>Lectura del reporte:</strong> las habilidades marcadas con ✓ superaron el umbral de dominio (p(L) ≥ ${MASTERY_THRESHOLD}).
-    Las que quedaron por debajo son candidatas a refuerzo docente presencial — con esta población (25–60 años)
-    conviene revisar si el punto de corte fue por falta real de dominio o por "slip" (oxidación/ansiedad),
-    ya que el parámetro p(S)=${BKT_PARAMS.pS} ya descuenta parte de ese efecto pero no lo elimina del todo.
+    Las que quedaron por debajo son candidatas a refuerzo docente presencial. Como carga → campo → potencial → energía
+    forman una cadena de prerrequisitos, un puntaje bajo temprano en la cadena (por ejemplo Ley de Coulomb) suele
+    explicar dificultades más adelante (potencial o relación E–V), aunque el parámetro p(S)=${BKT_PARAMS.pS} ya
+    descuenta parte del efecto de errores por distracción y no solo por falta de dominio.
   `;
 }
 
