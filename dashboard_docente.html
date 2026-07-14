@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Panel docente — Seguimiento de nivelación</title>
+<title>Panel docente — Campo y Potencial Eléctrico</title>
 <style>
   :root{
     --bg:#1B2420; --bg-panel:#212C27; --ink:#EDE8DD; --ink-dim:#A7AE9D;
@@ -52,6 +52,8 @@
 
   .status-msg{font-family:var(--font-mono); font-size:13px; color:var(--ink-dim); padding:40px 0; text-align:center;}
   .status-msg.err{color:var(--wrong);}
+
+  .chain-note{font-family:var(--font-mono); font-size:11px; color:var(--ink-dim); margin:-6px 0 20px;}
 </style>
 </head>
 <body>
@@ -59,8 +61,8 @@
   <header>
     <div>
       <p class="eyebrow">Panel docente · motor híbrido IRT + BKT</p>
-      <h1>Seguimiento de nivelación</h1>
-      <p class="sub">Estado más reciente de cada alumno y recomendaciones de refuerzo agrupadas por sub-habilidad.</p>
+      <h1>Campo y potencial eléctrico</h1>
+      <p class="sub">Estado más reciente de cada alumno y recomendaciones de refuerzo agrupadas por sub-tema. Cohorte: <strong id="cohorteLabel"></strong></p>
     </div>
     <button class="refresh-btn" id="refreshBtn" onclick="loadData()">Actualizar datos</button>
   </header>
@@ -68,17 +70,19 @@
 </div>
 
 <script>
-// Pegá la misma URL de Apps Script que usás en hybrid_demo.html (es el mismo endpoint).
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyOiXoRhYbL6lHWyc5KeUUkXEcnsLAJ8flr4lRkjmYx5qHWvaennlH8lMSWSQYGVCjd/exec";
+// Misma URL /exec que usás en el cuestionario (hybrid_demo.html) de este curso.
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbza7pdsliN4JKdDpm1XSjkE8UJYC1S9wOJ-jaxoRCIpjuHul2CqIafoFgCJzz9krLGd/exec";
+
+// Filtra este panel solo a la cohorte de este curso (el mismo endpoint puede recibir otros cursos).
+// Poné "" si querés ver todos los registros sin filtrar por cohorte.
+const COHORTE_FILTER = "campo-potencial-2026";
 
 const SKILLS_DASH = [
-  {key:"ecuaciones_1er_grado", label:"Ecuaciones 1er grado"},
-  {key:"ecuaciones_2do_grado", label:"Ecuaciones 2do grado"},
-  {key:"partes_triangulo",     label:"Partes del triángulo"},
-  {key:"trigonometria",        label:"Seno, coseno, tangente"},
-  {key:"vectores",             label:"Vectores"},
+  {key:"carga",     label:"Carga y Ley de Coulomb"},
+  {key:"campo",     label:"Campo eléctrico"},
+  {key:"potencial", label:"Potencial eléctrico"},
+  {key:"energia",   label:"Energía potencial y rel. E–V"},
 ];
-const MASTERY_THRESHOLD = 0.90;
 
 let allRows = [];
 let latestByStudent = [];
@@ -88,16 +92,20 @@ let sortAsc = true;
 async function loadData(){
   const btn = document.getElementById('refreshBtn');
   const content = document.getElementById('content');
+  document.getElementById('cohorteLabel').textContent = COHORTE_FILTER || "(todas)";
   btn.disabled = true;
   content.innerHTML = '<p class="status-msg">Cargando datos…</p>';
   try{
-    const res = await fetch(APPS_SCRIPT_URL);
+    const url = COHORTE_FILTER
+      ? `${APPS_SCRIPT_URL}?cohorte=${encodeURIComponent(COHORTE_FILTER)}`
+      : APPS_SCRIPT_URL;
+    const res = await fetch(url);
     const rows = await res.json();
-    allRows = rows;
+    allRows = Array.isArray(rows) ? rows : [];
     computeLatest();
     render();
   } catch(err){
-    content.innerHTML = `<p class="status-msg err">No se pudieron cargar los datos. Revisá que APPS_SCRIPT_URL esté bien pegada. Detalle: ${String(err)}</p>`;
+    content.innerHTML = `<p class="status-msg err">No se pudieron cargar los datos. Revisá que APPS_SCRIPT_URL esté bien pegada y que el script tenga la función doGet. Detalle: ${String(err)}</p>`;
   }
   btn.disabled = false;
 }
@@ -106,6 +114,7 @@ function computeLatest(){
   const byStudent = {};
   allRows.forEach(row => {
     const id = row.alumno;
+    if(!id) return;
     if(!byStudent[id] || row.marca_temporal > byStudent[id].marca_temporal){
       byStudent[id] = row;
     }
@@ -127,7 +136,7 @@ function renderOverview(){
     <div class="overview">
       <div class="stat-card"><p class="stat-label">Alumnos evaluados</p><p class="stat-value">${total}</p></div>
       <div class="stat-card"><p class="stat-label">θ promedio del curso</p><p class="stat-value">${avgTheta.toFixed(2)}</p></div>
-      <div class="stat-card"><p class="stat-label">Dominan las 5 habilidades</p><p class="stat-value">${total?Math.round(allMastered/total*100):0}%</p></div>
+      <div class="stat-card"><p class="stat-label">Dominan los 4 temas</p><p class="stat-value">${total?Math.round(allMastered/total*100):0}%</p></div>
       <div class="stat-card"><p class="stat-label">Sesiones totales registradas</p><p class="stat-value">${totalAttempts}</p></div>
     </div>`;
 }
@@ -147,13 +156,15 @@ function renderRecommendations(){
       ${listHtml}
     </div>`;
   }).join('');
-  return `<h2 class="section-title">Recomendaciones de refuerzo por habilidad</h2><div class="rec-grid">${cards}</div>`;
+  return `<h2 class="section-title">Recomendaciones de refuerzo por sub-tema</h2>
+    <p class="chain-note">Orden de prerrequisitos: carga → campo → potencial → energía. Una falla temprana en la cadena suele explicar dificultades en los temas siguientes.</p>
+    <div class="rec-grid">${cards}</div>`;
 }
 
 function sortRows(rows){
   return [...rows].sort((a,b)=>{
     let va = a[sortKey], vb = b[sortKey];
-    if(typeof va === "string" && !isNaN(Number(va))){ va = Number(va); vb = Number(vb); }
+    if(typeof va === "string" && !isNaN(Number(va)) && va !== ""){ va = Number(va); vb = Number(vb); }
     if(va < vb) return sortAsc ? -1 : 1;
     if(va > vb) return sortAsc ? 1 : -1;
     return 0;
@@ -167,7 +178,7 @@ function setSort(key){
 
 function renderTable(){
   const filterVal = (document.getElementById('searchInput')?.value || "").toLowerCase();
-  const rows = sortRows(latestByStudent).filter(r => r.alumno.toLowerCase().includes(filterVal));
+  const rows = sortRows(latestByStudent).filter(r => (r.alumno||"").toLowerCase().includes(filterVal));
 
   const headerCells = [
     {key:"alumno", label:"Alumno"},
@@ -184,7 +195,7 @@ function renderTable(){
       const ok = r[sk.key+"_lograda"] === "Sí";
       return `<td class="cell-pct ${ok?'ok':'low'}">${p}%${ok?' ✓':''}</td>`;
     }).join('');
-    const fecha = new Date(r.marca_temporal).toLocaleString('es-AR', {day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'});
+    const fecha = r.marca_temporal ? new Date(r.marca_temporal).toLocaleString('es-AR', {day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : "—";
     return `<tr>
       <td>${r.alumno}</td>
       <td class="cell-pct">${Number(r.theta_diagnostico).toFixed(2)}</td>
@@ -203,7 +214,7 @@ function renderTable(){
 function render(){
   const content = document.getElementById('content');
   if(latestByStudent.length === 0){
-    content.innerHTML = '<p class="status-msg">Todavía no hay resultados registrados en la Sheet.</p>';
+    content.innerHTML = '<p class="status-msg">Todavía no hay resultados registrados en la Sheet para esta cohorte.</p>';
     return;
   }
   content.innerHTML = renderOverview() + renderRecommendations() + renderTable();
