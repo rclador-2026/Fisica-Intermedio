@@ -447,11 +447,8 @@ function render(){
       <button class="restart" onclick="restart()">Reiniciar sesión</button>
     </div>`;
   explainer.innerHTML = `
-    <strong>Lectura del reporte:</strong> las habilidades marcadas con ✓ superaron el umbral de dominio (p(L) ≥ ${MASTERY_THRESHOLD}).
-    Las que quedaron por debajo son candidatas a refuerzo docente presencial — con esta población (25–60 años)
-    conviene revisar si el punto de corte fue por falta real de dominio o por "slip" (oxidación/ansiedad),
-    ya que el parámetro p(S)=${BKT_PARAMS.pS} ya descuenta parte de ese efecto pero no lo elimina del todo.
-  `;
+    <strong>Lectura del reporte:</strong> las habilidades marcadas con ✓ superaron el umbral de dominio.
+  ;
 }
 
 state = newState();
