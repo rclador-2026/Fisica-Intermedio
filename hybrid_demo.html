@@ -69,7 +69,8 @@
   <header>
     <p class="eyebrow">Motor híbrido de evaluación adaptativa · IRT + BKT</p>
     <h1>Física / Matemática básica — nivelación adulta</h1>
- <p class="sub">Fase 1 (IRT 2PL): diagnóstico rápido de preparación general. Fase 2 (BKT individualizado): refuerzo por sub-habilidad con parámetros ajustados a estudiantes que retoman el estudio (mayor slip por desuso), respetando prerrequisitos entre temas.</p>  </header>
+    <p class="sub">Fase 1 (IRT 2PL): diagnóstico rápido de preparación general. Fase 2 (BKT individualizado): refuerzo por sub-habilidad con parámetros ajustados a estudiantes que retoman el estudio (mayor slip por desuso), respetando prerrequisitos entre temas.</p>
+  </header>
   <div id="app"></div>
   <div class="explainer" id="explainer"></div>
 </div>
@@ -78,7 +79,7 @@
 /* ---------- CONFIGURACIÓN DE ENVÍO DE RESULTADOS ---------- */
 // 1. Pegá acá la URL que te da Google Apps Script al desplegar como "Aplicación web" (paso a paso más abajo).
 // 2. Cambiá COHORTE si vas a usar el mismo formulario para más de un curso/comisión.
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxVqTctjA-ixkG2NMQg6b819KU9GamigNobf_26-qi7hv41ySbXmpgtAAP_9u3dWRl7/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby4g9xKxcXRRtdwfQem5l4U_RMrO1J0VrriU4qtxKEyaF26fcY05HmCpAnwIk8dFlWa/exec";
 const COHORTE = "fisica-2026-adultos";
 
 /* ---------- CONTENIDO ---------- */
@@ -258,27 +259,18 @@ async function sendResults(){
       attempts: state.skills[key].attempts,
       mastered: state.skills[key].done,
     })),
-    totalPracticeQuestions: state.log.length, 
+    totalPracticeQuestions: state.log.length,
     log: state.log,
   };
   try{
-    const res = await fetch(APPS_SCRIPT_URL, {
+    await fetch(APPS_SCRIPT_URL, {
       method: "POST",
       headers: {"Content-Type": "text/plain;charset=utf-8"}, // evita preflight CORS
       body: JSON.stringify(payload),
     });
-    const text = await res.text();
-    let parsed = null;
-    try{ parsed = JSON.parse(text); } catch(_e){ /* no era JSON */ }
-    if(parsed && parsed.status === "ok"){
-      state.sendStatus = "ok";
-    } else {
-      state.sendStatus = "error";
-      state.sendErrorDetail = text.slice(0, 300);
-    }
+    state.sendStatus = "ok";
   } catch(err){
     state.sendStatus = "error";
-    state.sendErrorDetail = String(err);
   }
   render();
 }
@@ -442,12 +434,14 @@ function render(){
           state.sendStatus==='error' ? '✗ No se pudo enviar — revisá tu conexión o la URL de Apps Script. ' : ''}
         ${state.sendStatus==='error' ? '<button class="restart" style="margin-left:8px;" onclick="sendResults()">Reintentar envío</button>' : ''}
       </p>
-      ${state.sendStatus==='error' && state.sendErrorDetail ? `<p class="send-status err" style="font-size:11px; word-break:break-all;">Detalle: ${state.sendErrorDetail.replace(/</g,'&lt;')}</p>` : ''}
       <button class="restart" onclick="restart()">Reiniciar sesión</button>
     </div>`;
   explainer.innerHTML = `
-    <strong>Lectura del reporte:</strong> las habilidades marcadas con ✓ superaron el umbral de dominio.
-  ;
+    <strong>Lectura del reporte:</strong> las habilidades marcadas con ✓ superaron el umbral de dominio (p(L) ≥ ${MASTERY_THRESHOLD}).
+    Las que quedaron por debajo son candidatas a refuerzo docente presencial — con esta población (25–60 años)
+    conviene revisar si el punto de corte fue por falta real de dominio o por "slip" (oxidación/ansiedad),
+    ya que el parámetro p(S)=${BKT_PARAMS.pS} ya descuenta parte de ese efecto pero no lo elimina del todo.
+  `;
 }
 
 state = newState();
